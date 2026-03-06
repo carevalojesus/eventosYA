@@ -1,0 +1,23 @@
+*.iml
+.gradle
+/local.properties
+local.properties
+/.idea/
+.DS_Store
+/build
+/captures
+.externalNativeBuild
+.cxx
+
+# Archivos de build de modulos
+**/build/
+
+# Firebase - DATOS SENSIBLES
+**/google-services.json
+
+# Keystore
+*.jks
+*.keystore
+
+# Material Theme Builder (carpeta de referencia, no es codigo fuente)
+/material-theme/
