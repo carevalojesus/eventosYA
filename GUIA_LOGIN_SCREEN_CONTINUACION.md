@@ -1,129 +1,347 @@
-# Continuacion de la Guia: Login + Material 3 + UX (eventosYA)
+# Guia paso a paso (Continuacion): UX Material 3 + Admin + Persistencia de Tema
 
-Este documento continua la guia de `GUIA_LOGIN_SCREEN.md` con todo lo implementado hasta ahora en el proyecto, para uso de alumnos.
+Esta guia continua `GUIA_LOGIN_SCREEN.md` y explica, paso a paso, todo lo nuevo implementado hasta ahora.
 
-## 1. Objetivo de esta continuacion
+## Tabla de contenido
 
-Pasar de una pantalla de login base a una experiencia mas completa en Material 3:
+1. [Prerequisitos para esta continuacion](#1-prerequisitos-para-esta-continuacion)
+2. [Estructura final del proyecto (modulos nuevos)](#2-estructura-final-del-proyecto-modulos-nuevos)
+3. [Paso 1: Mejorar UX de Login (validacion inline + recuperar contrasena)](#paso-1-mejorar-ux-de-login-validacion-inline--recuperar-contrasena)
+4. [Paso 2: Persistir preferencias de tema con DataStore](#paso-2-persistir-preferencias-de-tema-con-datastore)
+5. [Paso 3: Integrar preferencias en MainActivity + Theme](#paso-3-integrar-preferencias-en-mainactivity--theme)
+6. [Paso 4: Navegacion adaptativa Admin (mobile y tablet)](#paso-4-navegacion-adaptativa-admin-mobile-y-tablet)
+7. [Paso 5: Pantalla de eventos admin con list-detail y estados](#paso-5-pantalla-de-eventos-admin-con-list-detail-y-estados)
+8. [Paso 6: Perfil admin (rol real + toggles de tema)](#paso-6-perfil-admin-rol-real--toggles-de-tema)
+9. [Paso 7: Pantalla de tickets con estados y motion](#paso-7-pantalla-de-tickets-con-estados-y-motion)
+10. [Paso 8: Internacionalizacion de textos](#paso-8-internacionalizacion-de-textos)
+11. [Conceptos clave explicados](#conceptos-clave-explicados)
+12. [Errores comunes y soluciones](#errores-comunes-y-soluciones)
+13. [Checklist final para alumnos](#checklist-final-para-alumnos)
 
-- UX de autenticacion mas robusta.
-- Tema configurable por el usuario.
-- Navegacion adaptativa para distintos tamanos de pantalla.
-- Mejora de accesibilidad, motion y consistencia visual.
-- Estandarizacion de textos mediante recursos.
+---
 
-## 2. Resumen de lo implementado
+## 1. Prerequisitos para esta continuacion
 
-### 2.1 Login y registro
+Antes de seguir, debes tener listo lo de la primera guia (`GUIA_LOGIN_SCREEN.md`):
 
-- Login con email/password + Google Sign-In.
-- Registro con email/password + Google Sign-In.
-- Validacion inline en login (`emailError`, `passwordError`).
-- Flujo de recuperacion de contrasena (envio de correo desde Firebase Auth).
-- Mensajes de error e informacion via `Snackbar`.
+- Firebase Auth funcionando.
+- Login/registro en Compose.
+- Tema Material 3 base (`Color.kt`, `Theme.kt`, `Type.kt`).
+- Proyecto compilando correctamente.
 
-Archivos clave:
+Adicional para esta parte:
 
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/login/LoginScreen.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/login/LoginViewModel.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/register/RegisterScreen.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/register/RegisterViewModel.kt`
+- Conocer `State` y `ViewModel` en Compose.
+- Entender `Flow` basico (para DataStore).
+- Tener Firestore habilitado para leer rol de usuario.
 
-### 2.2 Tema Material 3 y preferencias de usuario
+---
 
-- Esquema de colores Light y Dark.
-- Variante de alto contraste (`ContrastLevel`).
-- Soporte de Dynamic Color (Android 12+).
-- Persistencia de preferencias de tema con DataStore:
-  - `dynamicColorEnabled`
-  - `highContrastEnabled`
+## 2. Estructura final del proyecto (modulos nuevos)
 
-Archivos clave:
+La continuacion agrega estas piezas importantes:
 
-- `app/src/main/java/com/carevalojesus/eventosya/ui/theme/Theme.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/data/preferences/ThemePreferences.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/MainActivity.kt`
+```
+app/src/main/java/com/carevalojesus/eventosya/
+├── data/
+│   ├── model/
+│   │   ├── User.kt
+│   │   └── Event.kt
+│   └── preferences/
+│       └── ThemePreferences.kt
+├── ui/
+│   └── screens/
+│       ├── login/
+│       │   ├── LoginScreen.kt        (validacion inline + forgot password)
+│       │   └── LoginViewModel.kt
+│       ├── register/
+│       │   ├── RegisterScreen.kt     (textos por resources)
+│       │   └── RegisterViewModel.kt
+│       └── admin/
+│           ├── AdminNavigation.kt     (adaptativo: bottom bar / rail)
+│           ├── AdminHomeScreen.kt     (list-detail + estados)
+│           ├── AdminHomeViewModel.kt
+│           ├── AdminTicketsScreen.kt
+│           ├── AdminTicketsViewModel.kt
+│           ├── AdminProfileScreen.kt  (rol real + toggles tema)
+│           ├── CreateEventScreen.kt
+│           └── CreateEventViewModel.kt
+└── MainActivity.kt                    (tema persistente + transiciones)
 
-### 2.3 Modulo Admin (nuevas pantallas)
+app/src/main/res/values/
+└── strings.xml                        (i18n centralizada)
+```
 
-- Dashboard admin con navegacion adaptativa:
-  - `NavigationBar` en pantallas compactas.
-  - `NavigationRail` desde ~600dp.
-- Pantalla de eventos con:
-  - listado,
-  - detalle en dos paneles para pantallas amplias (list-detail),
-  - creacion y eliminacion.
-- Pantalla de tickets/ordenes con estados vacio/cargando/lista.
-- Perfil admin con toggles de tema (Dynamic Color / Alto contraste) y lectura de rol real desde Firestore.
+---
 
-Archivos clave:
+## Paso 1: Mejorar UX de Login (validacion inline + recuperar contrasena)
 
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminNavigation.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminHomeScreen.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminHomeViewModel.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/CreateEventScreen.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/CreateEventViewModel.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminTicketsScreen.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminTicketsViewModel.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/ui/screens/admin/AdminProfileScreen.kt`
+### 1.1 Extender el estado de UI
 
-### 2.4 Motion y estados
+En `LoginUiState` se agregan errores por campo e informacion:
 
-- Transicion entre pantallas principales con `AnimatedContent`.
-- Transiciones en pantallas admin para cambios de estado (`loading`, `empty`, `content`).
-- `Crossfade` para detalle de evento seleccionado en layout de dos paneles.
+```kotlin
+data class LoginUiState(
+    val email: String = "",
+    val password: String = "",
+    val emailError: String? = null,
+    val passwordError: String? = null,
+    val isLoading: Boolean = false,
+    val errorMessage: String? = null,
+    val infoMessage: String? = null,
+    val isLoginSuccess: Boolean = false,
+    val userRole: String? = null
+)
+```
 
-### 2.5 Accesibilidad y coherencia UX
+Por que: ahora la UI puede mostrar feedback exacto en cada campo y no solo un snackbar generico.
 
-- Encabezados semanticos en login/registro.
-- Evitamos affordances enganosos: estados ahora usan componentes visuales no clickeables cuando corresponde.
-- Mejor jerarquia tonal en superficies (TopAppBar, cards, FAB tonal).
+### 1.2 Validar antes de hacer sign-in
 
-### 2.6 Internacionalizacion (i18n)
+`loginWithEmail()` valida:
 
-- Textos principales migrados a `strings.xml`.
-- Menos hardcodeo de textos en composables.
+- correo vacio,
+- formato de correo,
+- password vacia.
 
-Archivo clave:
+Si falla, no llama Firebase y marca `emailError/passwordError`.
 
-- `app/src/main/res/values/strings.xml`
+### 1.3 Recuperar contrasena
 
-## 3. Dependencias agregadas
+Se agrega `sendPasswordReset()`:
 
-En `app/build.gradle.kts` se incorporaron, entre otras:
+```kotlin
+auth.sendPasswordResetEmail(email).await()
+```
 
-- `androidx.datastore:datastore-preferences`
-- `androidx.compose.material:material-icons-core`
-- librerias Material 3 adaptive
+Y en `LoginScreen`:
 
-## 4. Estructura de datos incorporada
+```kotlin
+TextButton(onClick = viewModel::sendPasswordReset)
+```
 
-Se anadieron modelos para separar mejor responsabilidades:
+### 1.4 Mostrar errores inline en TextField
 
-- `app/src/main/java/com/carevalojesus/eventosya/data/model/User.kt`
-- `app/src/main/java/com/carevalojesus/eventosya/data/model/Event.kt`
+En `OutlinedTextField`:
 
-## 5. Verificacion tecnica ejecutada
+```kotlin
+isError = state.emailError != null,
+supportingText = {
+    state.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+}
+```
 
-Se validaron builds y tests:
+Esto sigue la practica M3 de feedback de formulario cercano al input.
 
-- `./gradlew :app:assembleDebug` -> OK
-- `./gradlew :app:testDebugUnitTest` -> OK
+---
 
-## 6. Pendiente conocido
+## Paso 2: Persistir preferencias de tema con DataStore
 
-- Navegacion a editar evento desde `MainActivity` sigue como `TODO`.
+### 2.1 Crear `ThemePreferences.kt`
 
-## 7. Recomendaciones didacticas para alumnos
+Se define un DataStore de preferencias con 2 claves booleanas:
 
-1. Leer primero `GUIA_LOGIN_SCREEN.md` y luego este documento.
-2. Revisar `MainActivity.kt` para entender estado global + tema + transiciones.
-3. Revisar `LoginViewModel.kt` para validar formularios y flujo de recuperacion.
-4. Revisar `AdminNavigation.kt` y `AdminHomeScreen.kt` para patrones adaptativos.
-5. Practicar extrayendo strings hardcodeados restantes a `strings.xml`.
+- `dynamic_color_enabled`
+- `high_contrast_enabled`
 
-## 8. Siguiente extension sugerida para clase
+Y se exponen:
 
-- Implementar pantalla de edicion de eventos.
-- Agregar tests UI de Compose para login/registro/admin.
-- Aplicar manejo de errores de red mas granular por casos de Firebase.
+- `Flow<Boolean>` para lectura reactiva,
+- funciones `set...` para escritura.
+
+### 2.2 Agregar dependencia
+
+En `app/build.gradle.kts`:
+
+```kotlin
+implementation("androidx.datastore:datastore-preferences:1.1.1")
+```
+
+---
+
+## Paso 3: Integrar preferencias en MainActivity + Theme
+
+### 3.1 Leer preferencias como estado Compose
+
+En `MainActivity.kt`:
+
+```kotlin
+val preferences = remember { ThemePreferences(context.applicationContext) }
+val dynamicColorEnabled by preferences.dynamicColorEnabled.collectAsState(initial = false)
+val highContrastEnabled by preferences.highContrastEnabled.collectAsState(initial = false)
+```
+
+### 3.2 Aplicarlas al tema
+
+```kotlin
+EventosYATheme(
+    dynamicColor = dynamicColorEnabled,
+    contrastLevel = if (highContrastEnabled) ContrastLevel.High else ContrastLevel.Default,
+)
+```
+
+### 3.3 Guardar cambios de toggles
+
+```kotlin
+onDynamicColorChange = { enabled ->
+    scope.launch { preferences.setDynamicColorEnabled(enabled) }
+}
+```
+
+Resultado: al cerrar/reabrir app, el tema se conserva.
+
+---
+
+## Paso 4: Navegacion adaptativa Admin (mobile y tablet)
+
+En `AdminNavigation.kt` se usa `BoxWithConstraints` para elegir navegacion segun ancho:
+
+- `maxWidth < 600.dp` -> `NavigationBar` (bottom).
+- `maxWidth >= 600.dp` -> `NavigationRail` (lateral).
+
+```kotlin
+val useRail = maxWidth >= 600.dp
+```
+
+Por que: mejora uso en tablets y desktop-like sin duplicar pantallas.
+
+---
+
+## Paso 5: Pantalla de eventos admin con list-detail y estados
+
+`AdminHomeScreen.kt` ahora cubre:
+
+1. `loading`
+2. `empty`
+3. `content`
+
+con `AnimatedContent` para transicion suave.
+
+### 5.1 Pattern list-detail para ancho grande
+
+En `>= 840.dp`:
+
+- panel izquierdo: lista de eventos,
+- panel derecho: detalle del evento seleccionado (`EventDetailPane`).
+
+Para mobile se mantiene lista tradicional.
+
+### 5.2 Corregir affordance enganoso
+
+Antes: `SuggestionChip(onClick = {})` parecia clickeable sin accion real.
+
+Ahora: estado se representa con `Surface + Text` (componente visual, no interactivo).
+
+---
+
+## Paso 6: Perfil admin (rol real + toggles de tema)
+
+`AdminProfileScreen.kt`:
+
+- Lee usuario actual de Firebase Auth.
+- Consulta rol real desde Firestore.
+- Muestra switches para `Dynamic Color` y `Alto contraste`.
+
+Ejemplo de lectura de rol:
+
+```kotlin
+val role = FirebaseFirestore.getInstance()
+    .collection("users")
+    .document(uid)
+    .get()
+    .await()
+    .getString("role")
+```
+
+Con esto evitamos mostrar un rol fijo hardcodeado.
+
+---
+
+## Paso 7: Pantalla de tickets con estados y motion
+
+`AdminTicketsScreen.kt` usa `AnimatedContent` para transicionar entre:
+
+- cargando,
+- sin ordenes,
+- lista de ordenes.
+
+Ademas, los textos ya salen de `strings.xml`.
+
+---
+
+## Paso 8: Internacionalizacion de textos
+
+Se migro gran parte de textos a `app/src/main/res/values/strings.xml`.
+
+Ejemplo:
+
+```kotlin
+Text(stringResource(R.string.login_subtitle))
+```
+
+Beneficios:
+
+- facil traduccion futura,
+- consistencia de copy,
+- menos hardcodeo repetido.
+
+---
+
+## Conceptos clave explicados
+
+### `collectAsState()`
+Convierte `Flow` en estado de Compose reactivo.
+
+### `AnimatedContent` y `Crossfade`
+Animan cambio de estado/pantalla sin transiciones bruscas.
+
+### `BoxWithConstraints`
+Permite decisiones de layout segun el tamano disponible.
+
+### `isError` + `supportingText` en `OutlinedTextField`
+Patron M3 recomendado para errores de formulario.
+
+### DataStore vs SharedPreferences
+DataStore es asincrono, con Flow, y mas seguro para Compose moderno.
+
+---
+
+## Errores comunes y soluciones
+
+1. **No compila por imports de Compose runtime**
+   - Verifica `import androidx.compose.runtime.setValue` / `getValue` / `mutableStateOf`.
+
+2. **Dynamic Color no se refleja**
+   - Solo aplica completo en Android 12+.
+   - Verifica que no este activado alto contraste (en este proyecto, alto contraste tiene prioridad).
+
+3. **Forgot password no envia correo**
+   - Valida email correcto.
+   - Revisa que Firebase Auth Email/Password este habilitado.
+
+4. **No aparece rol en perfil**
+   - Revisa documento `users/{uid}` en Firestore y campo `role`.
+
+5. **Textos siguen hardcodeados**
+   - Busca con `rg 'Text\("' app/src/main/java` y migra a `stringResource`.
+
+---
+
+## Checklist final para alumnos
+
+- [ ] Login con validacion inline funcionando.
+- [ ] Recuperacion de contrasena funcionando.
+- [ ] Dynamic Color y alto contraste persisten al reiniciar app.
+- [ ] Navegacion admin cambia entre bottom bar y rail segun ancho.
+- [ ] Home admin usa list-detail en pantallas grandes.
+- [ ] Perfil muestra rol real de Firestore.
+- [ ] Pantallas principales usan strings en recursos.
+- [ ] `assembleDebug` y `testDebugUnitTest` en verde.
+
+---
+
+## Proxima practica recomendada
+
+1. Implementar pantalla de editar evento (el TODO pendiente).
+2. Agregar tests UI de Compose para login/admin.
+3. Crear guia de "Staff + escaneo QR" como siguiente modulo.
