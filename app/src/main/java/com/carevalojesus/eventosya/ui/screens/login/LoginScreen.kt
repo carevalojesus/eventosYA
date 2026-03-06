@@ -35,6 +35,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -234,10 +235,10 @@ fun LoginScreen(
                 enabled = !state.isLoading
             ) {
                 Icon(
-                    painter = painterResource(id = android.R.drawable.ic_dialog_info),
+                    painter = painterResource(id = R.drawable.ic_google),
                     contentDescription = null,
                     modifier = Modifier.size(20.dp),
-                    tint = MaterialTheme.colorScheme.onSurface
+                    tint = Color.Unspecified
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Continuar con Google")
