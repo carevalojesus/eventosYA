@@ -49,6 +49,8 @@ dependencies {
     implementation(libs.androidx.compose.ui.graphics)
     implementation(libs.androidx.compose.ui.tooling.preview)
     implementation(libs.androidx.compose.material3)
+    implementation("androidx.compose.material:material-icons-core")
+    implementation("androidx.compose.material:material-icons-extended")
     implementation("androidx.compose.ui:ui-text-google-fonts:1.7.8")
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
@@ -62,10 +64,17 @@ dependencies {
 
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-firestore")
 
     implementation("androidx.credentials:credentials:1.5.0")
     implementation("androidx.credentials:credentials-play-services-auth:1.5.0")
     implementation("com.google.android.libraries.identity.googleid:googleid:1.1.1")
 
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
+    implementation("androidx.navigation:navigation-compose:2.8.9")
+    implementation("androidx.datastore:datastore-preferences:1.1.1")
+    implementation("androidx.compose.material3:material3-adaptive-navigation-suite")
+    implementation("androidx.compose.material3.adaptive:adaptive")
+    implementation("androidx.compose.material3.adaptive:adaptive-layout")
+    implementation("androidx.compose.material3.adaptive:adaptive-navigation")
 }

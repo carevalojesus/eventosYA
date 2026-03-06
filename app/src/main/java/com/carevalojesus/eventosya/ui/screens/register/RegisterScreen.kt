@@ -1,4 +1,4 @@
-package com.carevalojesus.eventosya.ui.screens.login
+package com.carevalojesus.eventosya.ui.screens.register
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
@@ -17,6 +17,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Email
 import androidx.compose.material.icons.outlined.Lock
+import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Visibility
 import androidx.compose.material.icons.outlined.VisibilityOff
 import androidx.compose.material3.Button
@@ -40,12 +41,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardCapitalization
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -60,27 +62,22 @@ import com.google.android.libraries.identity.googleid.GetGoogleIdOption
 import kotlinx.coroutines.launch
 
 @Composable
-fun LoginScreen(
-    viewModel: LoginViewModel,
-    onLoginSuccess: () -> Unit = {},
-    onNavigateToRegister: () -> Unit = {}
+fun RegisterScreen(
+    viewModel: RegisterViewModel,
+    onRegisterSuccess: () -> Unit = {},
+    onNavigateToLogin: () -> Unit = {}
 ) {
     val state = viewModel.uiState
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
 
-    LaunchedEffect(state.isLoginSuccess) {
-        if (state.isLoginSuccess) onLoginSuccess()
+    LaunchedEffect(state.isRegisterSuccess) {
+        if (state.isRegisterSuccess) onRegisterSuccess()
     }
 
     LaunchedEffect(state.errorMessage) {
         state.errorMessage?.let {
-            snackbarHostState.showSnackbar(it)
-        }
-    }
-    LaunchedEffect(state.infoMessage) {
-        state.infoMessage?.let {
             snackbarHostState.showSnackbar(it)
         }
     }
@@ -96,35 +93,55 @@ fun LoginScreen(
                 .verticalScroll(rememberScrollState()),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(64.dp))
+            Spacer(modifier = Modifier.height(48.dp))
 
-            // Isotipo
             Image(
                 painter = painterResource(id = R.drawable.isotipo),
                 contentDescription = stringResource(R.string.app_name),
-                modifier = Modifier.size(120.dp)
+                modifier = Modifier.size(96.dp)
             )
 
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
             Text(
-                text = "eventosYA",
+                text = stringResource(R.string.create_account),
                 style = MaterialTheme.typography.headlineLarge,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.semantics { heading() }
             )
 
             Text(
-                text = stringResource(R.string.login_subtitle),
+                text = stringResource(R.string.register_subtitle),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
-            Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(24.dp))
+
+            // Nombre completo
+            OutlinedTextField(
+                value = state.name,
+                onValueChange = viewModel::onNameChange,
+                label = { Text(stringResource(R.string.full_name)) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Person,
+                        contentDescription = null
+                    )
+                },
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Words,
+                    imeAction = ImeAction.Next
+                ),
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isLoading
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
 
             // Email
-            var passwordVisible by remember { mutableStateOf(false) }
-
             OutlinedTextField(
                 value = state.email,
                 onValueChange = viewModel::onEmailChange,
@@ -140,10 +157,6 @@ fun LoginScreen(
                     keyboardType = KeyboardType.Email,
                     imeAction = ImeAction.Next
                 ),
-                isError = state.emailError != null,
-                supportingText = {
-                    state.emailError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
-                },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading
@@ -152,6 +165,8 @@ fun LoginScreen(
             Spacer(modifier = Modifier.height(12.dp))
 
             // Password
+            var passwordVisible by remember { mutableStateOf(false) }
+
             OutlinedTextField(
                 value = state.password,
                 onValueChange = viewModel::onPasswordChange,
@@ -179,33 +194,67 @@ fun LoginScreen(
                 },
                 keyboardOptions = KeyboardOptions(
                     keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Next
+                ),
+                supportingText = { Text(stringResource(R.string.password_min_6)) },
+                shape = MaterialTheme.shapes.medium,
+                modifier = Modifier.fillMaxWidth(),
+                enabled = !state.isLoading
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            // Confirmar password
+            var confirmPasswordVisible by remember { mutableStateOf(false) }
+
+            OutlinedTextField(
+                value = state.confirmPassword,
+                onValueChange = viewModel::onConfirmPasswordChange,
+                label = { Text(stringResource(R.string.confirm_password)) },
+                singleLine = true,
+                leadingIcon = {
+                    Icon(
+                        imageVector = Icons.Outlined.Lock,
+                        contentDescription = null
+                    )
+                },
+                visualTransformation = if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                        Icon(
+                            imageVector = if (confirmPasswordVisible) Icons.Outlined.Visibility
+                                else Icons.Outlined.VisibilityOff,
+                            contentDescription = if (confirmPasswordVisible) {
+                                stringResource(R.string.hide_password)
+                            } else {
+                                stringResource(R.string.show_password)
+                            }
+                        )
+                    }
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
                     imeAction = ImeAction.Done
                 ),
-                isError = state.passwordError != null,
+                isError = state.confirmPassword.isNotEmpty() && state.password != state.confirmPassword,
                 supportingText = {
-                    state.passwordError?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+                    if (state.confirmPassword.isNotEmpty() && state.password != state.confirmPassword) {
+                        Text(
+                            text = stringResource(R.string.passwords_do_not_match),
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
                 },
                 shape = MaterialTheme.shapes.medium,
                 modifier = Modifier.fillMaxWidth(),
                 enabled = !state.isLoading
             )
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(20.dp))
 
-            // Forgot password
-            TextButton(
-                onClick = viewModel::sendPasswordReset,
-                modifier = Modifier.align(Alignment.End),
-                enabled = !state.isLoading
-            ) {
-                Text(stringResource(R.string.forgot_password))
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Login button
+            // Register button
             Button(
-                onClick = viewModel::loginWithEmail,
+                onClick = viewModel::registerWithEmail,
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp),
@@ -219,7 +268,7 @@ fun LoginScreen(
                         strokeWidth = 2.dp
                     )
                 } else {
-                    Text(stringResource(R.string.login))
+                    Text(stringResource(R.string.create_account))
                 }
             }
 
@@ -232,7 +281,7 @@ fun LoginScreen(
             ) {
                 HorizontalDivider(modifier = Modifier.weight(1f))
                 Text(
-                    text = stringResource(R.string.or_continue_with),
+                    text = stringResource(R.string.or_register_with),
                     modifier = Modifier.padding(horizontal = 16.dp),
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
@@ -263,7 +312,7 @@ fun LoginScreen(
                             // User cancelled
                         } catch (e: Exception) {
                             viewModel.onGoogleSignInError(
-                                e.localizedMessage ?: "Error al iniciar con Google"
+                                e.localizedMessage ?: "Error al registrarse con Google"
                             )
                         }
                     }
@@ -286,18 +335,18 @@ fun LoginScreen(
 
             Spacer(modifier = Modifier.height(32.dp))
 
-            // Register link
+            // Login link
             Row(
                 horizontalArrangement = Arrangement.Center,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = stringResource(R.string.no_account_question),
+                    text = stringResource(R.string.have_account_question),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                TextButton(onClick = onNavigateToRegister) {
-                    Text(stringResource(R.string.register))
+                TextButton(onClick = onNavigateToLogin) {
+                    Text(stringResource(R.string.login))
                 }
             }
 
