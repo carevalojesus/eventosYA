@@ -7,11 +7,13 @@ import androidx.credentials.Credential
 import androidx.credentials.CustomCredential
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.carevalojesus.eventosya.data.model.User
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential.Companion.TYPE_GOOGLE_ID_TOKEN_CREDENTIAL
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.GoogleAuthProvider
 import com.google.firebase.auth.userProfileChangeRequest
+import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 
@@ -31,6 +33,7 @@ class RegisterViewModel : ViewModel() {
         private set
 
     private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     fun onNameChange(name: String) {
         uiState = uiState.copy(name = name, errorMessage = null)
@@ -73,9 +76,14 @@ class RegisterViewModel : ViewModel() {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
             try {
                 val result = auth.createUserWithEmailAndPassword(email, password).await()
-                result.user?.updateProfile(
+                val user = result.user!!
+
+                user.updateProfile(
                     userProfileChangeRequest { displayName = name }
-                )?.await()
+                ).await()
+
+                saveUserToFirestore(user.uid, name, email)
+
                 uiState = uiState.copy(isLoading = false, isRegisterSuccess = true)
             } catch (e: Exception) {
                 uiState = uiState.copy(
@@ -104,7 +112,19 @@ class RegisterViewModel : ViewModel() {
             uiState = uiState.copy(isLoading = true, errorMessage = null)
             try {
                 val firebaseCredential = GoogleAuthProvider.getCredential(idToken, null)
-                auth.signInWithCredential(firebaseCredential).await()
+                val result = auth.signInWithCredential(firebaseCredential).await()
+                val user = result.user!!
+
+                // Solo guarda en Firestore si es usuario nuevo
+                val doc = db.collection("users").document(user.uid).get().await()
+                if (!doc.exists()) {
+                    saveUserToFirestore(
+                        uid = user.uid,
+                        name = user.displayName ?: "",
+                        email = user.email ?: ""
+                    )
+                }
+
                 uiState = uiState.copy(isLoading = false, isRegisterSuccess = true)
             } catch (e: Exception) {
                 uiState = uiState.copy(
@@ -113,5 +133,15 @@ class RegisterViewModel : ViewModel() {
                 )
             }
         }
+    }
+
+    private suspend fun saveUserToFirestore(uid: String, name: String, email: String) {
+        val userData = hashMapOf(
+            "uid" to uid,
+            "name" to name,
+            "email" to email,
+            "role" to User.ROLE_USER
+        )
+        db.collection("users").document(uid).set(userData).await()
     }
 }
